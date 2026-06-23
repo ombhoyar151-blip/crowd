@@ -1,0 +1,30 @@
+zones:
+  - id: zone_entrance
+    name: "Main Entrance"
+    polygon:
+      - [100, 200]
+      - [400, 200]
+      - [400, 500]
+      - [100, 500]
+    threshold: 15
+    color: [0, 165, 255]
+
+  - id: zone_staircase
+    name: "Staircase"
+    polygon:
+      - [600, 100]
+      - [900, 100]
+      - [900, 300]
+      - [600, 300]
+    threshold: 8
+    color: [0, 0, 255]
+
+  - id: zone_plaza
+    name: "Plaza"
+    polygon:
+      - [200, 400]
+      - [700, 350]
+      - [800, 600]
+      - [300, 650]
+    threshold: 20
+    color: [255, 0, 0]

@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+.env
+.git
+output
+models/*.pt
+node_modules
+frontend

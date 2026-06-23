@@ -1,0 +1,17 @@
+INFO:     Started server process [22080]
+INFO:     Waiting for application startup.
+2026-06-13 18:50:39,777 [INFO] backend.main: Starting backend (port=8000)
+2026-06-13 18:50:39,836 [INFO] backend.main: Redis not configured � using in-process NullRedis stub
+2026-06-13 18:50:40,002 [INFO] backend.main: Backend ready � visit http://localhost:8000/docs
+2026-06-13 18:50:40,003 [INFO] backend.services.alert_broadcaster: Alert broadcaster subscribed to crowd:alerts:*
+C:\Users\THIN 15\OneDrive\Desktop\crowd\backend\services\alert_broadcaster.py:18: RuntimeWarning: coroutine '_NullPubSub.listen' was never awaited
+  async for message in pubsub.listen():
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+2026-06-13 18:50:40,007 [ERROR] asyncio: Task exception was never retrieved
+future: <Task finished name='Task-3' coro=<AlertBroadcaster.run() done, defined at C:\Users\THIN 15\OneDrive\Desktop\crowd\backend\services\alert_broadcaster.py:12> exception=TypeError("'async for' requires an object with __aiter__ method, got coroutine")>
+Traceback (most recent call last):
+  File "C:\Users\THIN 15\OneDrive\Desktop\crowd\backend\services\alert_broadcaster.py", line 18, in run
+    async for message in pubsub.listen():
+TypeError: 'async for' requires an object with __aiter__ method, got coroutine
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

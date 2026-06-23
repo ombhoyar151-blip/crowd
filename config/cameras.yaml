@@ -1,0 +1,27 @@
+cameras:
+  - id: cam_1
+    name: "Main Entrance"
+    source:
+      type: file
+      path: "sample.mp4"
+    resolution: [1280, 720]
+    fps: 30
+    enabled: true
+
+  - id: cam_2
+    name: "Parking Lot"
+    source:
+      type: rtsp
+      url: "rtsp://admin:password@192.168.1.100:554/stream1"
+    resolution: [1920, 1080]
+    fps: 25
+    enabled: false
+
+  - id: cam_3
+    name: "Lobby Camera"
+    source:
+      type: webcam
+      device_id: 0
+    resolution: [640, 480]
+    fps: 15
+    enabled: false
