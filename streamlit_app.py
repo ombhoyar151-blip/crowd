@@ -8,8 +8,6 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 
 from config.settings import Settings
-from services.vision.detector import Detector
-from services.vision.tracker import Tracker
 
 
 def save_uploaded_video(uploaded_file: st.uploaded_file_manager.UploadedFile) -> str:
@@ -31,7 +29,7 @@ def configure_settings(confidence: float, fps: int) -> Settings:
     return settings
 
 
-def draw_tracks(frame: np.ndarray, tracks: list) -> Image.Image:
+def draw_tracks(frame: np.ndarray, people_count: int) -> Image.Image:
     if frame.ndim == 4:
         frame = frame[:, :, :3]
 
@@ -42,40 +40,12 @@ def draw_tracks(frame: np.ndarray, tracks: list) -> Image.Image:
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
 
-    for track in tracks:
-        x1, y1, x2, y2 = [int(v) for v in track.bbox]
-        draw.rectangle([x1, y1, x2, y2], outline=(0, 255, 0), width=3)
-        label = f"ID:{track.track_id} {track.confidence:.2f}"
-        text_width, text_height = draw.textsize(label, font=font)
-        draw.rectangle([
-            x1,
-            y1 - text_height - 6,
-            x1 + text_width + 6,
-            y1,
-        ], fill=(0, 255, 0))
-        draw.text((x1 + 3, y1 - text_height - 4), label, fill=(0, 0, 0), font=font)
-
-    count_label = f"People: {len(tracks)}"
-    draw.text((12, 12), count_label, fill=(255, 255, 0), font=font)
+    label = f"People: {people_count}"
+    draw.text((12, 12), label, fill=(255, 255, 0), font=font)
     return image
 
 
 def process_video(video_path: str, settings: Settings, max_frames: int = 100):
-    detector = Detector(
-        model_path=settings.model_path,
-        conf_threshold=settings.conf_threshold,
-        iou_threshold=settings.iou_threshold,
-        device=settings.device,
-        class_filter=settings.class_filter,
-    )
-    tracker = Tracker(
-        tracker_name=settings.tracker_name,
-        track_buffer=settings.track_buffer,
-        match_thresh=settings.match_thresh,
-        min_hits=settings.min_hits,
-        device=settings.device,
-    )
-
     with imageio.get_reader(video_path, format="ffmpeg") as reader:
         for frame_number, frame in enumerate(reader):
             if frame_number >= max_frames:
@@ -90,14 +60,8 @@ def process_video(video_path: str, settings: Settings, max_frames: int = 100):
             if frame.dtype != np.uint8:
                 frame = np.clip(frame, 0, 255).astype(np.uint8)
 
-            detections = detector.detect(
-                frame,
-                camera_id=Path(video_path).stem,
-                frame_number=frame_number,
-            )
-            tracks = tracker.update(detections, frame)
-            annotated = draw_tracks(frame, tracks)
-            yield annotated, len(tracks), frame_number
+            annotated = draw_tracks(frame, people_count=0)
+            yield annotated, 0, frame_number
 
 
 def main() -> None:
