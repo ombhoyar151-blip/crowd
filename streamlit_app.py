@@ -143,13 +143,14 @@ def set_page_style() -> None:
     )
 
 
-def render_navbar(selected: str) -> None:
+def render_navbar(selected: str) -> str:
     nav_items = ["Overview", "Live Feed", "Settings"]
-    nav_html = ""
-    for item in nav_items:
-        css_class = "nav-pill-active" if item == selected else "nav-pill"
-        nav_html += f"<span class='{css_class}'>{item}</span>"
-    st.markdown(nav_html, unsafe_allow_html=True)
+    return st.radio(
+        "Navigation",
+        nav_items,
+        index=nav_items.index(selected),
+        horizontal=True,
+    )
 
 
 def main() -> None:
@@ -229,7 +230,7 @@ def main() -> None:
         unsafe_allow_html=True,
     )
 
-    render_navbar(st.session_state.nav)
+    st.session_state.nav = render_navbar(st.session_state.nav)
     st.markdown("---")
 
     if st.session_state.nav == "Overview":
