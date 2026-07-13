@@ -12,6 +12,21 @@ python scripts/download_model.py
 python scripts/run_pipeline.py --source file --video-path sample.mp4 --show
 ```
 
+### Streamlit Deployment
+
+This repository now includes a Streamlit app entrypoint at `streamlit_app.py`.
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+For Streamlit Cloud, the included `Procfile` uses:
+
+```text
+web: streamlit run streamlit_app.py --server.port $PORT
+```
+
 ### Configuration
 
 Edit `config/settings.py` or set env vars (see `.env.example`).
