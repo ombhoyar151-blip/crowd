@@ -1,6 +1,7 @@
 import tempfile
 import time
 from pathlib import Path
+from typing import Optional
 
 import imageio
 import numpy as np
@@ -8,6 +9,17 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 
 from config.settings import Settings
+
+try:
+    from services.vision.detector import Detector
+    from models.detection import Detection
+    DETECTION_ENABLED = True
+    DETECTION_IMPORT_ERROR = None
+except Exception as exc:
+    Detector = None
+    Detection = None
+    DETECTION_ENABLED = False
+    DETECTION_IMPORT_ERROR = exc
 
 
 def save_uploaded_video(uploaded_file: st.uploaded_file_manager.UploadedFile) -> str:
@@ -29,6 +41,35 @@ def configure_settings(confidence: float, fps: int) -> Settings:
     return settings
 
 
+def get_model_path(settings: Settings) -> Path:
+    root_path = settings.project_root
+    primary_path = root_path / settings.model_path
+    if primary_path.exists():
+        return primary_path
+
+    fallback_path = root_path / settings.model_path.name
+    if fallback_path.exists():
+        return fallback_path
+
+    raise FileNotFoundError(
+        f"YOLO model not found. Checked {primary_path} and {fallback_path}."
+    )
+
+
+def load_detector(settings: Settings) -> Optional[Detector]:
+    if not DETECTION_ENABLED:
+        return None
+
+    model_path = get_model_path(settings)
+    return Detector(
+        model_path=model_path,
+        conf_threshold=settings.conf_threshold,
+        iou_threshold=settings.iou_threshold,
+        device=settings.device,
+        class_filter=settings.class_filter,
+    )
+
+
 def draw_tracks(frame: np.ndarray, people_count: int) -> Image.Image:
     if frame.ndim == 4:
         frame = frame[:, :, :3]
@@ -46,7 +87,36 @@ def draw_tracks(frame: np.ndarray, people_count: int) -> Image.Image:
     return image
 
 
-def process_video(video_path: str, settings: Settings, max_frames: int = 120):
+def draw_detections(frame: np.ndarray, detections: list[Detection]) -> Image.Image:
+    if frame.ndim == 4:
+        frame = frame[:, :, :3]
+
+    if frame.dtype != np.uint8:
+        frame = np.clip(frame, 0, 255).astype(np.uint8)
+
+    image = Image.fromarray(frame)
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default()
+
+    for detection in detections:
+        x1, y1, x2, y2 = map(int, detection.bbox)
+        draw.rectangle([x1, y1, x2, y2], outline=(255, 51, 51), width=3)
+        label = f"{detection.class_name} {detection.confidence:.2f}"
+        draw.rectangle([x1, y1 - 20, x1 + len(label) * 7 + 14, y1], fill=(255, 51, 51))
+        draw.text((x1 + 6, y1 - 18), label, fill=(255, 255, 255), font=font)
+
+    people_count = len(detections)
+    draw.rectangle([10, 8, 240, 42], fill=(18, 92, 187, 230))
+    draw.text((14, 12), f"People: {people_count}", fill=(255, 255, 255), font=font)
+    return image
+
+
+def process_video(
+    video_path: str,
+    settings: Settings,
+    detector: Optional[Detector] = None,
+    max_frames: int = 120,
+):
     with imageio.get_reader(video_path, format="ffmpeg") as reader:
         for frame_number, frame in enumerate(reader):
             if frame_number >= max_frames:
@@ -61,8 +131,18 @@ def process_video(video_path: str, settings: Settings, max_frames: int = 120):
             if frame.dtype != np.uint8:
                 frame = np.clip(frame, 0, 255).astype(np.uint8)
 
-            annotated = draw_tracks(frame, people_count=0)
-            yield annotated, 0, frame_number
+            if detector is not None:
+                detections = detector.detect(
+                    frame,
+                    frame_number=frame_number,
+                )
+                annotated = draw_detections(frame, detections)
+                people_count = len(detections)
+            else:
+                annotated = draw_tracks(frame, people_count=0)
+                people_count = 0
+
+            yield annotated, people_count, frame_number
 
 
 def set_page_style() -> None:
@@ -258,14 +338,30 @@ def main() -> None:
             left, right = st.columns([2, 1])
             with left:
                 st.markdown("<div class='card'><h4>Live Detection Preview</h4></div>", unsafe_allow_html=True)
-                stream_placeholder = st.empty()
+                    stream_placeholder = st.empty()
                 status_placeholder = st.empty()
+
+                settings = configure_settings(
+                    confidence=st.session_state.confidence,
+                    fps=st.session_state.fps,
+                )
+                detector = None
+                if DETECTION_ENABLED:
+                    try:
+                        detector = load_detector(settings)
+                    except Exception as exc:
+                        st.error(f"Detection model error: {exc}")
+                        return
+                else:
+                    st.error(
+                        "Detection dependencies are not installed. Install ultralytics to enable people detection."
+                    )
+                    return
+
                 for annotated, people, frame_number in process_video(
                     st.session_state.video_path,
-                    configure_settings(
-                        confidence=st.session_state.confidence,
-                        fps=st.session_state.fps,
-                    ),
+                    settings,
+                    detector=detector,
                 ):
                     st.session_state.frame_count = frame_number + 1
                     stream_placeholder.image(
