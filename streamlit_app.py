@@ -166,6 +166,8 @@ def main() -> None:
         st.session_state.confidence = 0.5
         st.session_state.fps = 10
         st.session_state.frame_count = 0
+
+    if "nav" not in st.session_state:
         st.session_state.nav = "Overview"
 
     with st.sidebar:
