@@ -40,9 +40,9 @@ def draw_tracks(frame: np.ndarray, people_count: int) -> Image.Image:
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default()
 
-    label = f"People: {people_count}"
-    draw.rectangle([10, 8, 190, 34], fill=(0, 0, 0, 180))
-    draw.text((14, 12), label, fill=(255, 255, 255), font=font)
+    badge_text = f"People: {people_count}"
+    draw.rectangle([10, 8, 240, 42], fill=(18, 92, 187, 230))
+    draw.text((14, 12), badge_text, fill=(255, 255, 255), font=font)
     return image
 
 
@@ -65,40 +65,91 @@ def process_video(video_path: str, settings: Settings, max_frames: int = 120):
             yield annotated, 0, frame_number
 
 
-def page_style() -> None:
+def set_page_style() -> None:
     st.markdown(
         """
         <style>
         .stApp {
-            background: linear-gradient(180deg, #0b1f31 0%, #112d44 100%);
-            color: #ffffff;
+            background: linear-gradient(180deg, #061923 0%, #0f2742 100%);
+            color: #edf5ff;
         }
-        .title {
-            color: #ffffff;
+        .css-1d391kg {
+            background-color: rgba(6, 25, 44, 0.95) !important;
         }
-        .subtitle {
-            color: #9ac7ff;
+        .css-1d391kg [data-testid="stFileUploaderDropzone"] {
+            background: rgba(255, 255, 255, 0.06) !important;
+        }
+        .css-1v0mbfj.e1fqkh3o3 {
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+        .st-bc {
+            color: #eef6ff !important;
+        }
+        .stButton>button {
+            background: #2d7cff !important;
+            color: white !important;
+            border: none !important;
+        }
+        .stButton>button:hover {
+            background: #1f5edd !important;
         }
         .metric-label {
-            color: #9ac7ff !important;
+            color: #b8d5ff !important;
         }
         .metric-value {
             color: #ffffff !important;
         }
-        .stProgress > div > div {
-            background-image: linear-gradient(90deg, #45b3ff, #6a8aff);
+        .reportview-container .main .block-container {
+            padding-top: 20px;
+            padding-right: 20px;
+            padding-left: 20px;
+            padding-bottom: 20px;
         }
         .card {
-            padding: 18px;
-            border-radius: 16px;
+            padding: 20px;
+            border-radius: 18px;
             background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 22px 45px rgba(0, 0, 0, 0.18);
+        }
+        .section-title {
+            color: #ffffff;
+            margin-bottom: 6px;
+        }
+        .section-subtitle {
+            color: #a7c7ff;
+            margin-top: 0;
+        }
+        .nav-pill {
+            display: inline-block;
+            margin-right: 10px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #c8daff;
             border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+        .nav-pill-active {
+            background: #2a75ff;
+            color: #ffffff;
+            border-color: #2a75ff;
+        }
+        .small-note {
+            color: #b8d5ff;
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_navbar(selected: str) -> None:
+    nav_items = ["Overview", "Live Feed", "Settings"]
+    nav_html = ""
+    for item in nav_items:
+        css_class = "nav-pill-active" if item == selected else "nav-pill"
+        nav_html += f"<span class='{css_class}'>{item}</span>"
+    st.markdown(nav_html, unsafe_allow_html=True)
 
 
 def main() -> None:
@@ -107,7 +158,7 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    page_style()
+    set_page_style()
 
     if "process_requested" not in st.session_state:
         st.session_state.process_requested = False
@@ -115,40 +166,20 @@ def main() -> None:
         st.session_state.confidence = 0.5
         st.session_state.fps = 10
         st.session_state.frame_count = 0
-
-    st.markdown(
-        "# Crowd Management Dashboard"
-        "\n\n"
-        "Streamlined detection preview for uploaded video feeds. Use the sidebar to upload a video file, set thresholds, and start processing.",
-    )
-
-    header_col1, header_col2 = st.columns([3, 1])
-    with header_col1:
-        st.markdown(
-            "<div class='card'><h3>Real-Time Crowd Monitoring</h3>"
-            "<p>Upload a surveillance video and review frame-by-frame crowd detections with a live dashboard.</p></div>",
-            unsafe_allow_html=True,
-        )
-    with header_col2:
-        st.markdown(
-            "<div class='card'><h4>Quick Controls</h4>"
-            "<ul style='margin:0; padding-left:18px;'>"
-            "<li>Upload video file</li>"
-            "<li>Adjust confidence & FPS</li>"
-            "<li>View live detection preview</li>"
-            "</ul></div>",
-            unsafe_allow_html=True,
-        )
+        st.session_state.nav = "Overview"
 
     with st.sidebar:
-        st.markdown("## Upload & Detection")
+        st.markdown("# Crowd Control Panel")
+        st.markdown("#### Monitor crowd flow and manage detection settings in one place.")
+        st.markdown("---")
+
         uploaded_file = st.file_uploader(
-            "Choose a video file",
+            "Upload surveillance video",
             type=["mp4", "mov", "avi", "mkv"],
         )
         st.markdown("---")
 
-        st.markdown("## Settings")
+        st.markdown("## Detection Settings")
         confidence = st.slider(
             "Confidence threshold",
             0.0,
@@ -167,69 +198,100 @@ def main() -> None:
 
         if st.button("Start Detection"):
             if uploaded_file is None:
-                st.warning("Upload a video file before starting detection.")
+                st.warning("Please upload a video file before starting.")
             else:
                 st.session_state.video_path = save_uploaded_video(uploaded_file)
                 st.session_state.confidence = confidence
                 st.session_state.fps = fps
                 st.session_state.process_requested = True
                 st.session_state.frame_count = 0
+                st.session_state.nav = "Live Feed"
 
         if st.button("Reset"):
             st.session_state.process_requested = False
             st.session_state.video_path = ""
             st.session_state.frame_count = 0
+            st.session_state.nav = "Overview"
             st.experimental_rerun()
 
         st.markdown("---")
         st.markdown(
-            "#### Notes"
-            "<ul style='margin:0; padding-left:18px;'>"
-            "<li>File uploads are processed locally.</li>"
-            "<li>Max 120 frames shown for preview.</li>"
-            "<li>Video is not stored permanently.</li>"
-            "</ul>",
+            "<div class='card'><strong>Usage Notes</strong>"
+            "<p class='small-note'>Upload a clean camera feed and choose a confidence value for reliable detection.</p></div>",
             unsafe_allow_html=True,
         )
 
-    if not st.session_state.process_requested:
-        st.warning("Upload a video and press Start Detection to preview crowd analytics.")
-        return
-
-    settings = configure_settings(
-        confidence=st.session_state.confidence,
-        fps=st.session_state.fps,
+    st.markdown(
+        "<div class='card'><h1 class='section-title'>Crowd Management Dashboard</h1>"
+        "<p class='section-subtitle'>Visualize people detection, monitor density, and preview results in a crowd-control interface.</p></div>",
+        unsafe_allow_html=True,
     )
 
-    st.markdown("## Detection Preview")
-    metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
-    metrics_col1.metric("Confidence", f"{settings.conf_threshold:.0%}")
-    metrics_col2.metric("Target FPS", settings.target_fps)
-    metrics_col3.metric("Frames Processed", st.session_state.frame_count)
+    render_navbar(st.session_state.nav)
+    st.markdown("---")
 
-    progress_text = st.empty()
-    image_placeholder = st.empty()
+    if st.session_state.nav == "Overview":
+        top1, top2, top3, top4 = st.columns(4)
+        top1.metric("Upload Status", "Ready")
+        top2.metric("Confidence", f"{st.session_state.confidence:.0%}")
+        top3.metric("FPS", st.session_state.fps)
+        top4.metric("Frames", st.session_state.frame_count)
 
-    for annotated, people, frame_number in process_video(
-        st.session_state.video_path,
-        settings,
-        max_frames=120,
-    ):
-        st.session_state.frame_count = frame_number + 1
-        image_placeholder.image(
-            annotated,
-            caption=f"Frame {frame_number + 1} — People detected: {people}",
-            use_column_width=True,
-        )
-        progress_text.markdown(
-            f"<div class='card'><strong>Processing frame {frame_number + 1}</strong> · crowd overview active</div>",
+        st.markdown(
+            "<div class='card'><h4>Operational Summary</h4>"
+            "<p class='small-note'>Use the sidebar to upload a video and start detection. Live Feed will show annotated frames.</p></div>",
             unsafe_allow_html=True,
         )
-        time.sleep(0.02)
 
-    st.success(
-        f"Crowd detection preview complete — {st.session_state.frame_count} frames processed.",
-    )
+        if st.session_state.process_requested:
+            st.success("Detection ready. Switch to Live Feed to view the annotated stream.")
+        else:
+            st.info("No video uploaded yet. Upload a file to begin.")
+
+    elif st.session_state.nav == "Live Feed":
+        if not st.session_state.process_requested:
+            st.warning("Please start detection from the sidebar to view live feed output.")
+        else:
+            left, right = st.columns([2, 1])
+            with left:
+                st.markdown("<div class='card'><h4>Live Detection Preview</h4></div>", unsafe_allow_html=True)
+                stream_placeholder = st.empty()
+                status_placeholder = st.empty()
+                for annotated, people, frame_number in process_video(
+                    st.session_state.video_path,
+                    configure_settings(
+                        confidence=st.session_state.confidence,
+                        fps=st.session_state.fps,
+                    ),
+                ):
+                    st.session_state.frame_count = frame_number + 1
+                    stream_placeholder.image(
+                        annotated,
+                        caption=f"Frame {frame_number + 1} — People detected: {people}",
+                        use_column_width=True,
+                    )
+                    status_placeholder.markdown(
+                        f"<p class='small-note'>Processing frame {frame_number + 1} / 120</p>",
+                        unsafe_allow_html=True,
+                    )
+                    time.sleep(0.02)
+                st.success(f"Preview complete — {st.session_state.frame_count} frames processed.")
+            with right:
+                st.markdown("<div class='card'><h4>Current Settings</h4>"
+                            f"<p class='small-note'>Confidence: {st.session_state.confidence:.2f}<br>FPS: {st.session_state.fps}</p></div>",
+                            unsafe_allow_html=True)
+                st.markdown("<div class='card'><h4>Detection Notes</h4>"
+                            "<p class='small-note'>This preview uses a local video file. For a production crowd management system, connect to live camera feeds.</p></div>",
+                            unsafe_allow_html=True)
+
+    else:
+        st.markdown("<div class='card'><h4>Settings</h4>"
+                    "<p class='small-note'>Adjust detection confidence and frame rate in the sidebar.</p></div>",
+                    unsafe_allow_html=True)
+
+        st.markdown("<div class='card'><h4>System Info</h4>"
+                    "<p class='small-note'>This Streamlit app is a preview interface created for crowd management video review.</p></div>",
+                    unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
